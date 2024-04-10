@@ -28,6 +28,7 @@ test.each([
   [[0, 0, 0, 0, 0], [[0, [0, 1, 2, 3, 4]]]],
   [[1, 1, 2, 0, 0], [[2, [2, 3, 4]]]],
   [[11, 0, 0, 7, 4], [[7, [1, 2, 3]]]],
+  [[11, 11, 11, 0, 3], []],
 ])
   ('when line is %j returns %j', (line, expected) => {
     const received = WinningCombinations.call(line);
