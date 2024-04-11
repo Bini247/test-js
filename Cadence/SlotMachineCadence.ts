@@ -27,6 +27,11 @@ type RoundsCadences = {
   roundThree: SlotCadence;
 };
 
+type CurrentRound = {
+  cadence: number;
+  anticipation: number;
+}
+
 /**
  * Anticipator configuration. Has all information needed to check anticipator.
  * @param columnSize It's the number of columns the slot machine has.
@@ -81,8 +86,60 @@ const slotMachineCadences: RoundsCadences = { roundOne: [], roundTwo: [], roundT
  * @returns SlotCadence Array of numbers representing the slot machine stop cadence.
  */
 function slotCadence(symbols: Array<SlotCoordinate>): SlotCadence {
-  // Magic
-  return [];
+  const cadence: SlotCadence = Array(anticipatorConfig.columnSize).fill(0);
+
+  let currentRound:CurrentRound = {
+    "cadence": anticipatorConfig.defaultCadence,
+    "anticipation": 0
+  }
+
+  cadence.map( (value, column) => {
+    if(cadence[column - 1] == undefined){
+      cadence[column] = 0
+
+      currentRound = calculateRoundCadence(symbols, currentRound, column)
+      
+    }else if(cadence[column - 1] != undefined) {
+      cadence[column] = cadence[column - 1] + currentRound.cadence;
+      currentRound.cadence = anticipatorConfig.defaultCadence
+      
+      currentRound = calculateRoundCadence(symbols, currentRound, column)
+    }
+  });
+
+  return cadence;
+}
+
+/**
+ * This function receives an array of coordinates relative to positions in the slot machine's matrix.
+ * This array is the positions of the special symbols.
+ * And it has to return a slot machine stop cadence.
+ * @param symbols Array<SlotCoordinate> positions of the special symbols. Example: [{ column: 0, row: 2 }, { column: 2, row: 3 }]
+ * @param currentRound CurrentRound cadence and anticipation of the current round. Example: { cadence: 1, anticipation: 0 }
+ * @param row Number of the column wich the cadence is being calculated
+ * @returns CurrentRound cadence and anticipation of the current round. Example: { cadence: 1, anticipation: 0 }
+ */
+function calculateRoundCadence(symbols:Array<SlotCoordinate>, currentRound:CurrentRound, row:number): CurrentRound {
+  if (symbols.length > 0){
+    symbols.map( (symbol:any) => {
+      if(symbol.column == row){
+        currentRound.anticipation++
+        if((currentRound.anticipation >= anticipatorConfig.minToAnticipate) && (currentRound.anticipation < anticipatorConfig.maxToAnticipate)){
+          currentRound.cadence = anticipatorConfig.anticipateCadence
+        }
+      }
+
+      if(currentRound.anticipation >= anticipatorConfig.minToAnticipate){
+        currentRound.cadence = anticipatorConfig.anticipateCadence
+      }
+
+      if(currentRound.anticipation >= anticipatorConfig.maxToAnticipate){
+        currentRound.cadence = anticipatorConfig.defaultCadence
+      }
+    })
+  }
+
+  return currentRound
 }
 
 /**
@@ -91,9 +148,10 @@ function slotCadence(symbols: Array<SlotCoordinate>): SlotCadence {
  * @return RoundsCadences has all cadences for each game round.
  */
 function handleCadences(rounds: RoundsSymbols): RoundsCadences {
-  slotMachineCadences.roundOne = slotCadence(rounds.roundOne.specialSymbols);
-  slotMachineCadences.roundTwo = slotCadence(rounds.roundTwo.specialSymbols);
-  slotMachineCadences.roundThree = slotCadence(rounds.roundThree.specialSymbols);
+  
+  Object.keys(slotMachineCadences).forEach(function(round) {
+    slotMachineCadences[round as keyof RoundsCadences] = slotCadence(rounds[round as keyof RoundsSymbols].specialSymbols);
+  })
 
   return slotMachineCadences;
 }
